@@ -24,7 +24,7 @@ geocode = Addressable::URI.new(
                     }
   ).to_s
 
-puts geocode_response = JSON.parse(RestClient.get(geocode))
+geocode_response = JSON.parse(RestClient.get(geocode))
 
 lat = geocode_response["results"][0]["geometry"]["location"]["lat"]
 lng = geocode_response["results"][0]["geometry"]["location"]["lng"]
@@ -42,12 +42,51 @@ address = Addressable::URI.new(
  ).to_s
 
 places_response = JSON.parse(RestClient.get(address))
-places_response = JSON.parse(places_request)
 
-icecreams = places_response["results"].map do |place|
+icecream_locations = places_response["results"].map do |place|
   place["geometry"]["location"]
 end
 
+icecream_names = places_response["results"].map do |place|
+  place["name"]
+end
 
+directions_URLs = []
+
+icecream_locations.each_with_index do |location|
+    latt, long = location['lat'], location['lng']
+    shop = "#{latt},#{long}"
+    directions = Addressable::URI.new(
+      :scheme => "http",
+      :host => "maps.googleapis.com",
+      :path => "/maps/api/directions/json",
+      :query_values => {:origin => "#{lat},#{lng}",
+      :destination => shop,
+      :sensor => "false",
+      :mode => "walking",
+
+                      }
+  ).to_s
+
+  directions_URLs << directions
+end
+
+direction_parses = []
+directions_URLs.each do |url|
+  direction_parses << JSON.parse(RestClient.get(url))
+end
+
+text_directions_array = []
+direction_parses.each_with_index do |json_parse, i|
+  directions = icecream_names[i] + "\n"
+  json_parse["routes"][0]["legs"][0]["steps"].each do |step|
+    directions += Nokogiri::HTML(step["html_instructions"]) #doc.at('Destination').content = "'\n'Destination")
+    directions += "\n"
+  end
+  directions += "\n"
+  text_directions_array << directions
+end
+
+puts text_directions_array
 
 
